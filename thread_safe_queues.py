@@ -6,9 +6,24 @@
 
 # _-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 # //Using Thread-Safe Queues
+# // parsing arguments
 import argparse
 from queue import LifoQueue, PriorityQueue, Queue
+# // threads
+import threading
+# //
+from random import randint, choice
+from time import sleep
+# // rendering
 from itertools import zip_longest
+from rich.align import Align
+from rich.columns import Columns
+from rich.console import Group
+from rich.live import Live
+from rich.panel import Panel
+# //
+from dataclasses import dataclass, field
+from enum import IntEnum
 
 QUEUE_TYPES = {
     "fifo": Queue,
@@ -35,10 +50,9 @@ PRODUCTS = (
     ":yo-yo:",
 )
 
+
 # _-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 # // queue.PriorityQueue (defining two new data types)
-from dataclasses import dataclass, field
-from enum import IntEnum
 
 
 @dataclass(order=True)
@@ -62,10 +76,8 @@ PRIORITIZED_PRODUCTS = (
     Product(Priority.LOW, ":3rd_place_medal:"),
 )
 
+
 # // Encapsulating in a common base class
-import threading
-from random import randint
-from time import sleep
 
 
 class Worker(threading.Thread):
@@ -100,8 +112,6 @@ class Worker(threading.Thread):
 
 # _-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 # // queue.Queue
-from random import choice, randint
-
 
 class Producer(Worker):
     def __init__(self, speed, buffer, products):
@@ -127,12 +137,6 @@ class Consumer(Worker):
 
 
 # //
-from rich.align import Align
-from rich.columns import Columns
-from rich.console import Group
-from rich.live import Live
-from rich.panel import Panel
-
 
 class View:
     def __init__(self, buffer, producers, consumers):
@@ -179,6 +183,23 @@ class View:
 # //
 def main(args):
     buffer = QUEUE_TYPES[args.queue]()
+    products = PRIORITIZED_PRODUCTS if args.queue == "heap" else PRODUCTS
+    producers = [
+        Producer(args.producer_speed, buffer, products)
+        for _ in range(args.producers)
+    ]
+    consumers = [
+        Consumer(args.consumer_speed, buffer) for _ in range(args.consumers)
+    ]
+
+    for producer in producers:
+        producer.start()
+
+    for consumer in consumers:
+        consumer.start()
+
+    view = View(buffer, producers, consumers)
+    view.animate()
 
 
 def parse_args():
